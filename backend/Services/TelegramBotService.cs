@@ -13,7 +13,7 @@ public class TelegramBotService
     {
         _httpClient = new HttpClient();
         _botToken = config["Telegram:BotToken"] ?? "";
-        _channelUsername = config["Telegram:ChannelUsername"] ?? "";
+        _channelUsername = config["Telegram:ChannelId"] ?? config["Telegram:ChannelUsername"] ?? "";
         _logger = logger;
     }
 
@@ -24,7 +24,7 @@ public class TelegramBotService
     {
         if (string.IsNullOrWhiteSpace(_botToken) || string.IsNullOrWhiteSpace(_channelUsername))
         {
-            _logger.LogWarning("Telegram bot token or channel username not configured.");
+            _logger.LogWarning("Telegram bot token or channel ID not configured.");
             return null;
         }
 

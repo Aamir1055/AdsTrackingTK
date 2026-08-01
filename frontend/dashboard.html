@@ -7,7 +7,27 @@
     <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
-    <div class="dashboard">
+    <!-- Login Gate -->
+    <div id="login-gate" class="login-gate">
+        <div class="login-card">
+            <img src="logo.png" alt="TradeKaro" class="login-logo">
+            <h2>Dashboard Login</h2>
+            <form id="login-form">
+                <div class="login-field">
+                    <label for="login-user">Username</label>
+                    <input type="text" id="login-user" autocomplete="username" required>
+                </div>
+                <div class="login-field">
+                    <label for="login-pass">Password</label>
+                    <input type="password" id="login-pass" autocomplete="current-password" required>
+                </div>
+                <p id="login-error" class="login-error" hidden>Invalid username or password</p>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="dashboard" id="dashboard-content" style="display:none;">
         <header class="dash-header">
             <div class="header-left">
                 <img src="logo.png" alt="TradeKaro" class="header-logo">
@@ -19,27 +39,27 @@
         <!-- KPI Cards -->
         <section class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a6ff00" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                 <div class="kpi-value" id="total-visitors">-</div>
                 <div class="kpi-label">Total Visitors</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a6ff00" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
                 <div class="kpi-value" id="total-pageviews">-</div>
                 <div class="kpi-label">Page Views</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a6ff00" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
                 <div class="kpi-value" id="avg-time">-</div>
                 <div class="kpi-label">Avg. Time on Page</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a6ff00" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg></div>
+                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg></div>
                 <div class="kpi-value" id="telegram-clicks">-</div>
                 <div class="kpi-label">Telegram Btn Clicks</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a6ff00" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg></div>
+                <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg></div>
                 <div class="kpi-value" id="telegram-members">-</div>
                 <div class="kpi-label">Channel Members</div>
             </div>
@@ -54,7 +74,6 @@
                         <span class="funnel-circle-value" id="funnel-visitors-count">-</span>
                     </div>
                     <div class="funnel-label">Visited Site</div>
-                    <div class="funnel-pct" id="funnel-visitors-pct">100%</div>
                 </div>
                 <div class="funnel-connector"><div class="funnel-connector-line"></div></div>
                 <div class="funnel-step">
@@ -62,7 +81,6 @@
                         <span class="funnel-circle-value" id="funnel-cta-count">-</span>
                     </div>
                     <div class="funnel-label">Clicked "Join Telegram"</div>
-                    <div class="funnel-pct" id="funnel-cta-pct">-</div>
                 </div>
                 <div class="funnel-connector"><div class="funnel-connector-line"></div></div>
                 <div class="funnel-step">
@@ -70,7 +88,6 @@
                         <span class="funnel-circle-value" id="funnel-telegram-count">-</span>
                     </div>
                     <div class="funnel-label">Members Joined</div>
-                    <div class="funnel-pct" id="funnel-telegram-pct">-</div>
                 </div>
             </div>
         </section>
@@ -87,7 +104,6 @@
                             <th>Campaign</th>
                             <th>Visitors</th>
                             <th>Telegram Clicks</th>
-                            <th>Conversion %</th>
                         </tr>
                     </thead>
                     <tbody id="campaigns-body">
@@ -123,5 +139,43 @@
     </div>
 
     <script src="dashboard.js"></script>
+    <script>
+    (function() {
+        var token = sessionStorage.getItem('dash_token');
+
+        function showDashboard() {
+            document.getElementById('login-gate').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+        }
+
+        // If we already have a token, verify it
+        if (token) {
+            fetch('/api/auth/verify', { headers: { 'X-Dashboard-Token': token } })
+                .then(function(r) { if (r.ok) showDashboard(); })
+                .catch(function() {});
+        }
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var user = document.getElementById('login-user').value;
+            var pass = document.getElementById('login-pass').value;
+            document.getElementById('login-error').hidden = true;
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            }).then(function(r) {
+                if (!r.ok) throw new Error('Unauthorized');
+                return r.json();
+            }).then(function(data) {
+                sessionStorage.setItem('dash_token', data.token);
+                showDashboard();
+            }).catch(function() {
+                document.getElementById('login-error').hidden = false;
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

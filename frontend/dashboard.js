@@ -65,10 +65,6 @@
         document.getElementById('funnel-cta-count').textContent = data.telegramClicks;
         document.getElementById('funnel-telegram-count').textContent = data.telegramMembers;
 
-        document.getElementById('funnel-visitors-pct').textContent = '100%';
-        document.getElementById('funnel-cta-pct').textContent = maxVal > 0 ? Math.round((data.telegramClicks / maxVal) * 100) + '%' : '-';
-        document.getElementById('funnel-telegram-pct').textContent = maxVal > 0 ? Math.round((data.telegramMembers / maxVal) * 100) + '%' : '-';
-
         // Color funnel circles based on value
         setFunnelCircle('funnel-visitors', data.totalVisitors, maxVal);
         setFunnelCircle('funnel-cta', data.telegramClicks, maxVal);
@@ -78,13 +74,12 @@
         var campBody = document.getElementById('campaigns-body');
         if (data.campaigns && data.campaigns.length > 0) {
             campBody.innerHTML = data.campaigns.map(function(c) {
-                var conv = c.visitors > 0 ? Math.round((c.telegramClicks / c.visitors) * 100) : 0;
                 return '<tr><td>' + esc(c.utmSource) + '</td><td>' + esc(c.utmMedium) +
                     '</td><td>' + esc(c.utmCampaign) + '</td><td>' + c.visitors +
-                    '</td><td>' + c.telegramClicks + '</td><td>' + conv + '%</td></tr>';
+                    '</td><td>' + c.telegramClicks + '</td></tr>';
             }).join('');
         } else {
-            campBody.innerHTML = '<tr><td colspan="6" class="empty-state">No campaign data yet</td></tr>';
+            campBody.innerHTML = '<tr><td colspan="5" class="empty-state">No campaign data yet</td></tr>';
         }
 
         // Visitors table
@@ -109,11 +104,11 @@
     function setFunnelCircle(id, value, max) {
         var el = document.getElementById(id);
         var pct = max > 0 ? Math.min(value / max, 1) : 0;
-        var colors = ['#a6ff00', '#7acc00', '#4f9900'];
+        var colors = ['#f59e0b', '#d97706', '#b45309'];
         var idx = { 'funnel-visitors': 0, 'funnel-cta': 1, 'funnel-telegram': 2 };
-        var color = colors[idx[id]] || '#a6ff00';
+        var color = colors[idx[id]] || '#f59e0b';
         el.style.borderColor = color;
-        el.style.background = pct > 0 ? 'rgba(166, 255, 0, 0.06)' : '#0f0f0f';
+        el.style.background = pct > 0 ? 'rgba(245, 158, 11, 0.06)' : '#ffffff';
         var size = 65 + (pct * 25);
         el.style.width = size + 'px';
         el.style.height = size + 'px';

@@ -126,11 +126,29 @@
             enteredAt: pageEnteredAt
         });
 
-        // 3. Track time on page — send on visibility change or before unload
-        var startTime = Date.now();
+        // 3. Track time on page — only count time when tab is visible/active
+        var activeTime = 0;
+        var lastActiveAt = Date.now();
+        var isVisible = !document.hidden;
+
+        function updateActiveTime() {
+            if (isVisible) {
+                activeTime += Date.now() - lastActiveAt;
+            }
+            lastActiveAt = Date.now();
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            updateActiveTime();
+            isVisible = !document.hidden;
+            if (document.hidden) {
+                sendTimeOnPage();
+            }
+        });
 
         function sendTimeOnPage() {
-            var seconds = Math.round((Date.now() - startTime) / 1000);
+            updateActiveTime();
+            var seconds = Math.round(activeTime / 1000);
             if (seconds < 1) return;
             post('/api/track/timeOnPage', {
                 visitorId: visitorId,
@@ -140,11 +158,6 @@
             });
         }
 
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'hidden') {
-                sendTimeOnPage();
-            }
-        });
         window.addEventListener('beforeunload', sendTimeOnPage);
 
         // 4. Track Telegram button click (main CTA)

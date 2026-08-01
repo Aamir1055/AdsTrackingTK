@@ -100,5 +100,25 @@ public static class DatabaseInitializer
         try {
             await connection.ExecuteAsync("ALTER TABLE channel_messages ADD COLUMN photo_url VARCHAR(512) NOT NULL DEFAULT '' AFTER message_text");
         } catch { /* column already exists */ }
+
+        // Dashboard login users
+        await connection.ExecuteAsync(@"
+            CREATE TABLE IF NOT EXISTS dashboard_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(100) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        // Seed default admin user if table is empty
+        var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM dashboard_users");
+        if (userCount == 0)
+        {
+            var defaultHash = BCrypt.Net.BCrypt.HashPassword("*9AJcdasq+LC(!kT4ziX+");
+            await connection.ExecuteAsync(
+                "INSERT INTO dashboard_users (username, password_hash) VALUES (@Username, @Hash)",
+                new { Username = "JpTradeBazaar", Hash = defaultHash });
+        }
     }
 }

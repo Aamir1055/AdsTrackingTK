@@ -103,6 +103,10 @@ public class TelegramMessagesService
             if (chatId != _channelId)
                 continue;
 
+            // Skip videos, animations/GIFs, and documents — we only show text and photos
+            if (post.TryGetProperty("video", out _) || post.TryGetProperty("animation", out _) || post.TryGetProperty("document", out _))
+                continue;
+
             var messageId = post.GetProperty("message_id").GetInt32();
             var timestamp = DateTimeOffset.FromUnixTimeSeconds(post.GetProperty("date").GetInt64()).UtcDateTime;
             var text = post.TryGetProperty("text", out var t) ? t.GetString() ?? "" :
@@ -117,46 +121,6 @@ public class TelegramMessagesService
                 if (photoArray.Count > 0)
                 {
                     var fileId = photoArray[photoArray.Count - 1].GetProperty("file_id").GetString();
-                    photoUrl = await GetFileUrlAsync(fileId!);
-                }
-            }
-            // Also handle video — get actual video file URL
-            else if (post.TryGetProperty("video", out var video))
-            {
-                // Get the video file URL for playback
-                var videoFileId = video.GetProperty("file_id").GetString();
-                var videoUrl = await GetFileUrlAsync(videoFileId!);
-                if (!string.IsNullOrEmpty(videoUrl))
-                {
-                    photoUrl = "video:" + videoUrl;
-                }
-                else if (video.TryGetProperty("thumbnail", out var thumb) || video.TryGetProperty("thumb", out thumb))
-                {
-                    var thumbId = thumb.GetProperty("file_id").GetString();
-                    photoUrl = await GetFileUrlAsync(thumbId!);
-                }
-            }
-            // Handle animation/GIF — get the actual file
-            else if (post.TryGetProperty("animation", out var animation))
-            {
-                var animFileId = animation.GetProperty("file_id").GetString();
-                var animUrl = await GetFileUrlAsync(animFileId!);
-                if (!string.IsNullOrEmpty(animUrl))
-                {
-                    photoUrl = animUrl; // GIFs render as images
-                }
-                else if (animation.TryGetProperty("thumbnail", out var animThumb) || animation.TryGetProperty("thumb", out animThumb))
-                {
-                    var fileId = animThumb.GetProperty("file_id").GetString();
-                    photoUrl = await GetFileUrlAsync(fileId!);
-                }
-            }
-            // Handle document with thumbnail
-            else if (post.TryGetProperty("document", out var docMsg))
-            {
-                if (docMsg.TryGetProperty("thumbnail", out var docThumb) || docMsg.TryGetProperty("thumb", out docThumb))
-                {
-                    var fileId = docThumb.GetProperty("file_id").GetString();
                     photoUrl = await GetFileUrlAsync(fileId!);
                 }
             }
