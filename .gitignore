@@ -23,3 +23,5 @@ appsettings.*.json
 
 # Large video files
 frontend/*.mp4
+!frontend/AdsReel.mp4
+!frontend/AdsReel1.mp4
