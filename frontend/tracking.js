@@ -2,7 +2,7 @@
     'use strict';
 
     var API_BASE = '';
-    var TELEGRAM_URL = 'https://t.me/bvlLIuR9HlNiMTI1';
+    var TELEGRAM_URL = 'https://t.me/tradekaromarketupdates';
     var COOKIE_NAME = 'visitor_id';
     var COOKIE_DAYS = 30;
 
