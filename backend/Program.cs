@@ -45,6 +45,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+var frontendPath = ResolveFrontendPath(app.Environment.ContentRootPath);
+
 // Create tables if they don't exist
 var dbFactory = app.Services.GetRequiredService<DbConnectionFactory>();
 await DatabaseInitializer.InitializeAsync(dbFactory);
@@ -61,7 +63,7 @@ app.UseCors();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(app.Environment.ContentRootPath, "..", "frontend")),
+        frontendPath),
     RequestPath = ""
 });
 
@@ -70,9 +72,28 @@ app.MapControllers();
 // Fallback to index.html for the landing page
 app.MapFallback(async context =>
 {
-    var filePath = Path.Combine(app.Environment.ContentRootPath, "..", "frontend", "index.html");
+    var filePath = Path.Combine(frontendPath, "index.html");
     context.Response.ContentType = "text/html";
     await context.Response.SendFileAsync(filePath);
 });
 
 app.Run();
+
+static string ResolveFrontendPath(string contentRootPath)
+{
+    var candidates = new[]
+    {
+        Path.Combine(contentRootPath, "frontend"),
+        Path.Combine(contentRootPath, "..", "frontend")
+    };
+
+    foreach (var candidate in candidates)
+    {
+        var fullPath = Path.GetFullPath(candidate);
+        if (Directory.Exists(fullPath))
+            return fullPath;
+    }
+
+    throw new DirectoryNotFoundException(
+        $"Unable to locate frontend directory. Checked: {string.Join(", ", candidates.Select(Path.GetFullPath))}");
+}
