@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AdsTracking.Api.Data;
 using Dapper;
+using System.Text.RegularExpressions;
 
 namespace AdsTracking.Api.Services;
 
@@ -17,15 +18,18 @@ public class TelegramMessagesService
     private readonly HttpClient _httpClient;
     private readonly string _botToken;
     private readonly string _channelId;
+    private readonly string _channelUsername;
     private readonly DbConnectionFactory _dbFactory;
     private readonly ILogger<TelegramMessagesService> _logger;
     private int _lastUpdateId = 0;
+    private DateTime _lastReconcileUtc = DateTime.MinValue;
 
     public TelegramMessagesService(IConfiguration config, DbConnectionFactory dbFactory, ILogger<TelegramMessagesService> logger)
     {
         _httpClient = new HttpClient();
         _botToken = config["Telegram:BotToken"] ?? "";
         _channelId = config["Telegram:ChannelId"] ?? "";
+        _channelUsername = ResolveChannelUsername(config);
         _dbFactory = dbFactory;
         _logger = logger;
 
@@ -67,6 +71,13 @@ public class TelegramMessagesService
             try
             {
                 await PollNewMessagesAsync();
+
+                // Reconcile every 5 minutes so deleted Telegram posts do not linger in local DB.
+                if ((DateTime.UtcNow - _lastReconcileUtc).TotalMinutes >= 5)
+                {
+                    await ReconcileWithTelegramPublicFeedAsync();
+                    _lastReconcileUtc = DateTime.UtcNow;
+                }
             }
             catch (Exception ex)
             {
@@ -78,7 +89,7 @@ public class TelegramMessagesService
 
     private async Task PollNewMessagesAsync()
     {
-        var url = $"https://api.telegram.org/bot{_botToken}/getUpdates?offset={_lastUpdateId + 1}&limit=100&allowed_updates=[\"channel_post\"]";
+        var url = $"https://api.telegram.org/bot{_botToken}/getUpdates?offset={_lastUpdateId + 1}&limit=100&allowed_updates=[\"channel_post\",\"edited_channel_post\"]";
         var response = await _httpClient.GetAsync(url);
         var json = await response.Content.ReadAsStringAsync();
 
@@ -95,8 +106,14 @@ public class TelegramMessagesService
             if (updateId > _lastUpdateId)
                 _lastUpdateId = updateId;
 
-            if (!update.TryGetProperty("channel_post", out var post))
+            var hasChannelPost = update.TryGetProperty("channel_post", out var post);
+            var hasEditedChannelPost = update.TryGetProperty("edited_channel_post", out var editedPost);
+
+            if (!hasChannelPost && !hasEditedChannelPost)
                 continue;
+
+            if (!hasChannelPost)
+                post = editedPost;
 
             // Only process messages from our configured channel
             var chatId = post.GetProperty("chat").GetProperty("id").GetInt64().ToString();
@@ -130,8 +147,12 @@ public class TelegramMessagesService
             {
                 using var conn = _dbFactory.CreateConnection();
                 await conn.ExecuteAsync(
-                    @"INSERT IGNORE INTO channel_messages (message_id, message_text, photo_url, timestamp_utc) 
-                      VALUES (@MessageId, @Text, @PhotoUrl, @Timestamp)",
+                                        @"INSERT INTO channel_messages (message_id, message_text, photo_url, timestamp_utc)
+                                            VALUES (@MessageId, @Text, @PhotoUrl, @Timestamp)
+                                            ON DUPLICATE KEY UPDATE
+                                                message_text = VALUES(message_text),
+                                                photo_url = VALUES(photo_url),
+                                                timestamp_utc = VALUES(timestamp_utc)",
                     new { MessageId = messageId, Text = text.Length > 1024 ? text[..1024] : text, PhotoUrl = photoUrl, Timestamp = timestamp });
 
                 // Keep only latest 20 messages — delete older ones
@@ -139,13 +160,74 @@ public class TelegramMessagesService
                     @"DELETE FROM channel_messages 
                       WHERE id NOT IN (SELECT id FROM (SELECT id FROM channel_messages ORDER BY message_id DESC LIMIT 20) AS keep)");
 
-                _logger.LogInformation("Stored channel message ID {Id} (photo: {HasPhoto})", messageId, !string.IsNullOrEmpty(photoUrl));
+                _logger.LogInformation("Upserted channel message ID {Id} (photo: {HasPhoto}, edited: {IsEdited})", messageId, !string.IsNullOrEmpty(photoUrl), hasEditedChannelPost && !hasChannelPost);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to persist message {Id}", messageId);
             }
         }
+    }
+
+    private async Task ReconcileWithTelegramPublicFeedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_channelUsername))
+            return;
+
+        try
+        {
+            var channelUrl = $"https://t.me/s/{_channelUsername}";
+            var html = await _httpClient.GetStringAsync(channelUrl);
+
+            var matches = Regex.Matches(html, "data-post=\"[^\"/]+/(\\d+)\"");
+            var visibleIds = matches
+                .Select(m => int.TryParse(m.Groups[1].Value, out var id) ? id : 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .OrderBy(id => id)
+                .ToList();
+
+            if (visibleIds.Count == 0)
+                return;
+
+            var minVisibleId = visibleIds.First();
+            var maxVisibleId = visibleIds.Last();
+
+            using var conn = _dbFactory.CreateConnection();
+            var removed = await conn.ExecuteAsync(
+                @"DELETE FROM channel_messages
+                  WHERE message_id BETWEEN @MinVisibleId AND @MaxVisibleId
+                    AND message_id NOT IN @VisibleIds",
+                new { MinVisibleId = minVisibleId, MaxVisibleId = maxVisibleId, VisibleIds = visibleIds });
+
+            if (removed > 0)
+            {
+                _logger.LogInformation("Reconciled channel messages with Telegram feed. Removed {RemovedCount} stale local rows.", removed);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Telegram public-feed reconciliation skipped/failed.");
+        }
+    }
+
+    private static string ResolveChannelUsername(IConfiguration config)
+    {
+        var fromConfig = (config["Telegram:ChannelUsername"] ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(fromConfig) && !fromConfig.Equals("YOUR_CHANNEL_USERNAME", StringComparison.OrdinalIgnoreCase))
+            return fromConfig.TrimStart('@');
+
+        var fromUrl = (config["TelegramChannelUrl"] ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(fromUrl) && Uri.TryCreate(fromUrl, UriKind.Absolute, out var uri))
+        {
+            var path = uri.AbsolutePath.Trim('/');
+            if (!string.IsNullOrWhiteSpace(path) && !path.StartsWith('+'))
+            {
+                return path.Split('/')[0].TrimStart('@');
+            }
+        }
+
+        return string.Empty;
     }
 
     private async Task<string> GetFileUrlAsync(string fileId)
