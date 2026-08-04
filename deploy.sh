@@ -7,13 +7,14 @@ set -Eeuo pipefail
 # - DOMAIN
 # The rest of the deployment stays identical unless you override the optional variables.
 
-REPO_URL="${REPO_URL:-https://github.com/Aamir1055/AdsTrackingTKTamil}"
-APP_NAME="${APP_NAME:-AdsTrackingTamil}"
-DOMAIN="${DOMAIN:-telegram.tamil.tradekaro.com}"
-PORT="${PORT:-5003}"
-CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@${DOMAIN}}"
-SOURCE_SERVICE="${SOURCE_SERVICE:-}"
+REPO_URL=https://github.com/Aamir1055/AdsTrackingKannada 
+APP_NAME=AdsTrackingKannada 
+DOMAIN=telegram.kannada.tradekaro.com 
+PORT=5004 
+SOURCE_SERVICE=adstracking-tamil 
+CERTBOT_EMAIL=your-email@domain.com 
 DB_CONNECTION_STRING="${DB_CONNECTION_STRING:-}"
+SKIP_CERTBOT="${SKIP_CERTBOT:-0}"
 
 REPO_DIR="/root/${APP_NAME}"
 PUBLISH_DIR="/var/www/${APP_NAME}"
@@ -124,8 +125,22 @@ EOF
 }
 
 enable_https() {
+  if [[ "$SKIP_CERTBOT" == "1" ]]; then
+    echo "SKIP_CERTBOT=1 set; skipping HTTPS automation."
+    return
+  fi
+
+  if ! getent ahosts "$DOMAIN" >/dev/null 2>&1; then
+    echo "DNS for $DOMAIN is not resolving yet; skipping Certbot for now."
+    echo "Add an A/AAAA record for the domain, then rerun only the HTTPS step later."
+    return
+  fi
+
   if command -v certbot >/dev/null 2>&1; then
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$CERTBOT_EMAIL" --redirect
+    if ! certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$CERTBOT_EMAIL" --redirect; then
+      echo "Certbot failed; the app and nginx deployment are still complete."
+      echo "Fix DNS for $DOMAIN and rerun the script, or set SKIP_CERTBOT=1 until DNS is ready."
+    fi
   else
     echo "certbot not installed; skipping HTTPS automation."
   fi
